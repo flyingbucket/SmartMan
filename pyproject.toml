@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartman"
+version = "0.1.0"
+description = "A smart man-page tool powered by fine-tuned LLMs"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+# [project.scripts]
+# smartman-tune = "smartman.tune:main"

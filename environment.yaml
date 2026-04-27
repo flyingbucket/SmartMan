@@ -7,3 +7,5 @@ dependencies:
   - pip
   - pip:
       - -r requirements.txt
+      - --extra-index-url https://download.pytorch.org/whl/cu124
+      - -e .
