@@ -1,4 +1,8 @@
-__pycache__/
 .vscode/
-llm_env_project/
+__pycache__/
+.ipynb_checkpoints/
+
+notebooks/
+base_models/
+env_bundle/
 
