@@ -2,8 +2,6 @@ import json
 import random
 from pathlib import Path
 
-from transformers import data
-
 nl_path = Path("./data/raw/nl2bash/all.nl")
 cm_path = Path("./data/raw/nl2bash/all.cm")
 data_dir = Path("./data/processed/nl2bash")
@@ -15,17 +13,11 @@ random.seed(42)
 Path("./data/processed/nl2bash").mkdir(parents=True, exist_ok=True)
 all_path = Path("./data/processed/nl2bash/all.jsonl")
 
-# ============================
-# system prompt 改成中文任务描述
-# ============================
-system_msg = {  # 系统提示词,每一个对话样本都会带上这句话
+system_msg = {
     "role": "system",
-    "content": "你是一个Linux专家，请根据用户的中文描述，输出对应的Bash命令。只输出命令本身，不要任何解释。",
+    "content": "你是一个Linux专家，请根据用户的描述，输出对应的Bash命令。只输出命令本身，不要任何解释。",
 }
 
-# ============================
-# 读取 + 过滤
-# ============================
 dataset = []
 skipped = 0
 
@@ -34,11 +26,11 @@ with open(nl_path, "r") as nl_f, open(cm_path, "r") as cm_f:
         nl = nl.strip()
         cm = cm.strip()
 
-        # 过滤掉空行、命令太短或太长的
+        # 过滤掉空行、命令太长的
         if not nl or not cm:
             skipped += 1
             continue
-        if len(cm) < 3 or len(cm) > 300:
+        if len(cm) > 300:
             skipped += 1
             continue
 

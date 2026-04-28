@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
 
-Path("./data/processed/nl2bash").mkdir(parents=True, exist_ok=True)
+generated_dir = Path("./data/processed/generated")
+generated_dir.mkdir(parents=True, exist_ok=True)
 
 system_msg = {
     "role": "system",
-    "content": "你是一个Linux专家，请根据用户的中文描述，输出对应的Bash命令。只输出命令本身，不要任何解释。"
+    "content": "你是一个Linux专家，请根据用户的中文描述，输出对应的Bash命令。只输出命令本身，不要任何解释。",
 }
 
 # ============================================================
@@ -13,7 +14,6 @@ system_msg = {
 # 重点覆盖 AI 容易出错的场景，共 8 大类
 # ============================================================
 chinese_data = [
-
     # --------------------------------------------------------
     # 类别1：引号与转义（最高频错误）
     # AI 经常忘记引号、用错单双引号、漏转义特殊字符
@@ -30,7 +30,6 @@ chinese_data = [
     ("在文件名包含空格的文件里搜索关键词", "grep 'keyword' 'my file.txt'"),
     ("把含有空格的目录名作为参数传给ls", "ls 'my documents'"),
     ("用find查找文件名包含空格的文件", "find . -name '* *'"),
-
     # --------------------------------------------------------
     # 类别2：find 命令（AI 经常搞错逻辑组合和动作）
     # --------------------------------------------------------
@@ -43,13 +42,15 @@ chinese_data = [
     ("查找所有者是root的文件", "find . -user root"),
     ("查找大小在1M到10M之间的文件", "find . -type f -size +1M -size -10M"),
     ("查找.py或.sh文件", "find . -type f \\( -name '*.py' -o -name '*.sh' \\)"),
-    ("查找.py文件但排除venv目录", "find . -path './venv' -prune -o -name '*.py' -print"),
+    (
+        "查找.py文件但排除venv目录",
+        "find . -path './venv' -prune -o -name '*.py' -print",
+    ),
     ("查找.log文件并删除（不进入子目录）", "find . -maxdepth 1 -name '*.log' -delete"),
     ("查找所有软链接", "find . -type l"),
     ("查找文件名以数字开头的文件", "find . -name '[0-9]*'"),
     ("查找最近10分钟内创建的文件", "find . -type f -cmin -10"),
     ("统计当前目录下（不含子目录）的文件数量", "find . -maxdepth 1 -type f | wc -l"),
-
     # --------------------------------------------------------
     # 类别3：管道与重定向（AI 经常搞混 > >> 2>&1 顺序）
     # --------------------------------------------------------
@@ -64,7 +65,6 @@ chinese_data = [
     ("把上一个命令的退出码打印出来", "echo $?"),
     ("用xargs把find结果传给rm删除", "find . -name '*.tmp' | xargs rm -f"),
     ("用xargs处理含有空格的文件名", "find . -name '*.txt' -print0 | xargs -0 rm"),
-
     # --------------------------------------------------------
     # 类别4：awk 与 sed 进阶（AI 最容易写错语法）
     # --------------------------------------------------------
@@ -82,7 +82,6 @@ chinese_data = [
     ("用sed删除注释行（以#开头）", "sed '/^#/d' file.txt"),
     ("用sed在每行末尾添加分号", "sed 's/$/;/' file.txt"),
     ("用sed在第3行后面插入一行新内容", "sed '3a\\new line content' file.txt"),
-
     # --------------------------------------------------------
     # 类别5：变量与条件判断（AI 常犯空格错误）
     # --------------------------------------------------------
@@ -90,14 +89,13 @@ chinese_data = [
     ("判断目录是否存在，不存在则创建", "[ ! -d mydir ] && mkdir mydir"),
     ("判断变量是否为空", "[ -z \"$var\" ] && echo 'empty'"),
     ("判断变量是否不为空", "[ -n \"$var\" ] && echo 'not empty'"),
-    ("判断两个字符串是否相等", "[ \"$a\" = \"$b\" ] && echo 'equal'"),
-    ("判断数字a是否大于b", "[ \"$a\" -gt \"$b\" ] && echo 'a is greater'"),
-    ("遍历当前目录下所有py文件并打印文件名", "for f in *.py; do echo \"$f\"; done"),
+    ("判断两个字符串是否相等", '[ "$a" = "$b" ] && echo \'equal\''),
+    ("判断数字a是否大于b", '[ "$a" -gt "$b" ] && echo \'a is greater\''),
+    ("遍历当前目录下所有py文件并打印文件名", 'for f in *.py; do echo "$f"; done'),
     ("循环10次打印数字1到10", "for i in $(seq 1 10); do echo $i; done"),
     ("把命令输出赋值给变量", "result=$(ls -la)"),
     ("把当前时间赋值给变量", "now=$(date '+%Y-%m-%d %H:%M:%S')"),
     ("获取当前脚本所在目录的绝对路径", "dir=$(cd $(dirname $0) && pwd)"),
-
     # --------------------------------------------------------
     # 类别6：进程与后台任务（AI 常漏参数）
     # --------------------------------------------------------
@@ -113,7 +111,6 @@ chinese_data = [
     ("查看进程的完整启动命令", "ps -p 12345 -o cmd"),
     ("查看占用8080端口的进程", "lsof -i :8080"),
     ("每隔2秒执行一次命令", "watch -n 2 'df -h'"),
-
     # --------------------------------------------------------
     # 类别7：字符串处理（AI 经常把参数顺序搞错）
     # --------------------------------------------------------
@@ -128,7 +125,6 @@ chinese_data = [
     ("删除变量中最后一个斜杠之后的部分（取目录名）", "echo ${var%/*}"),
     ("删除变量中第一个斜杠之前的部分（取文件名）", "echo ${var##*/}"),
     ("给变量设置默认值（变量为空时用默认值）", "echo ${var:-default}"),
-
     # --------------------------------------------------------
     # 类别8：文件内容与权限（AI 常犯的细节错误）
     # --------------------------------------------------------
@@ -154,18 +150,20 @@ chinese_data = [
 # ============================
 dataset = []
 for nl, cm in chinese_data:
-    dataset.append({
-        "messages": [
-            system_msg,
-            {"role": "user",      "content": nl},
-            {"role": "assistant", "content": cm}
-        ]
-    })
+    dataset.append(
+        {
+            "messages": [
+                system_msg,
+                {"role": "user", "content": nl},
+                {"role": "assistant", "content": cm},
+            ]
+        }
+    )
 
 # ============================
 # 保存
 # ============================
-out_path = Path("./data/processed/nl2bash/train_chinese.jsonl")
+out_path = generated_dir / "train_chinese.jsonl"
 with open(out_path, "w", encoding="utf-8") as f:
     for entry in dataset:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
