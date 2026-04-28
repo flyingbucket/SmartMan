@@ -6,6 +6,7 @@ notebooks/
 base_models/
 env_bundle/
 output/
+data/processed/
 
 Qwen2.5-Coder-1.5B/
 
