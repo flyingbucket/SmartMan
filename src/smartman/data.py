@@ -1,9 +1,13 @@
 import json
 from pathlib import Path
 
+from transformers import data
+
 nl_path = Path("./data/raw/nl2bash/all.nl")
 cm_path = Path("./data/raw/nl2bash/all.cm")
-file_path = Path("./data/processed/nl2bash/all.jsonl")
+data_dir = Path("./data/processed/nl2bash")
+data_dir.mkdir(exist_ok=True)
+file_path = data_dir / "all.jsonl"
 
 system_msg = {"role": "system", "content": "You are a helpful assistant."}
 dataset = []
