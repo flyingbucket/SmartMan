@@ -19,9 +19,6 @@ output_dir = f"output/{run_name}{timestemp}"
 
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-tokenizer.eos_token = "<|im_end|>"
-tokenizer.pad_token = tokenizer.eos_token
-
 
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
