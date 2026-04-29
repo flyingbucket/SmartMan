@@ -6,7 +6,8 @@ notebooks/
 base_models/
 env_bundle/
 output/
-
+data/processed/
+eval_results/
 Qwen2.5-Coder-1.5B/
 
 Qwen2.5-Coder-1.5B.tar

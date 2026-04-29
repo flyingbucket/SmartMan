@@ -1,66 +1,31 @@
 import os
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 import torch
 from datasets import load_dataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    AutoConfig,
-    BitsAndBytesConfig,
 )
-from peft import LoraConfig, prepare_model_for_kbit_training
-
-from trl.trainer.sft_trainer import SFTTrainer
+from peft import LoraConfig
 from trl.trainer.sft_config import SFTConfig
+from trl.trainer.sft_trainer import SFTTrainer
 from datetime import datetime
 
-# config
-model_dir = "./base_models/Qwen2.5-Coder-1.5B"
-data_path = "./data/processed/nl2bash/sample.jsonl"
+model_id = "./base_models/Qwen2.5-1.5B-Instruct"
+data_path = "data/processed/nl2bash"
 
-run_name = "qwen"
-timestamp = datetime.now().strftime("%m%d-%H%M")
-output_dir = f"./output/{run_name}-{timestamp}"
+timestemp = datetime.now().strftime("%m%d_%H%M")
+run_name = "qwenInsctruct"
+output_dir = f"output/{run_name}{timestemp}"
 
-config = AutoConfig.from_pretrained(model_dir, trust_remote_code=True)
-tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
-tokenizer.bos_token = None  # 显式设为 None，对齐 Qwen 特性
-tokenizer.padding_side = "right"  # 关键：微调必须右填充
 
-# 2. 动态获取 EOS Token ID
-# 优先从 config 中读取，因为这是模型训练时的“硬性规定”
-model_eos_id = (
-    config.eos_token_id if config.eos_token_id is not None else tokenizer.eos_token_id
-)
-
-# 3. 动态设置 PAD Token
-# 如果模型没有定义 pad_token，则将其设为 eos_token
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
-    # 或者直接操作 ID 确保万无一失
-    tokenizer.pad_token_id = model_eos_id
-
-print(f"动态识别完成：EOS ID={tokenizer.eos_token_id}, PAD ID={tokenizer.pad_token_id}")
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
-    bnb_4bit_use_double_quant=True,
-)
+tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 
 model = AutoModelForCausalLM.from_pretrained(
-    model_dir,
-    quantization_config=bnb_config,
+    model_id,
+    torch_dtype=torch.bfloat16,  # use bf16
     device_map="auto",
-    dtype=torch.bfloat16,
+    attn_implementation="flash_attention_2",
 )
-
-model.config.pad_token_id = tokenizer.pad_token_id
-model.generation_config.pad_token_id = tokenizer.pad_token_id
-model.generation_config.eos_token_id = tokenizer.eos_token_id
-model = prepare_model_for_kbit_training(model)
 
 lora_config = LoraConfig(
     r=16,
@@ -73,37 +38,53 @@ lora_config = LoraConfig(
         "gate_proj",
         "up_proj",
         "down_proj",
-    ],
+    ],  # all linear layers in model
     lora_dropout=0.05,
     bias="none",
     task_type="CAUSAL_LM",
 )
 
-dataset = load_dataset("json", data_files=data_path, split="train")
+# data preparation
+dataset = load_dataset(
+    "json",
+    data_files={
+        "train": os.path.join(data_path, "train.jsonl"),
+        "eval": os.path.join(data_path, "eval.jsonl"),  # 用 eval 做验证
+    },
+)
 
-sft_config = SFTConfig(
+training_args = SFTConfig(
     output_dir=output_dir,
-    dataset_text_field="messages",
-    max_length=1024,
     per_device_train_batch_size=16,
     gradient_accumulation_steps=1,
     learning_rate=2e-4,
-    num_train_epochs=3,
-    save_steps=100,
+    num_train_epochs=5,
     lr_scheduler_type="cosine",
-    warmup_ratio=0.1,
+    logging_steps=10,
+    eval_strategy="steps",
+    eval_steps=100,
+    save_strategy="steps",
+    save_steps=200,
     bf16=True,
-    gradient_checkpointing=True,
-    report_to="none",
+    push_to_hub=False,
+    dataset_text_field="messages",
+    max_length=512,
+    packing=True,
+    # tensorboard
+    report_to="tensorboard",
+    logging_dir=f"{output_dir}/runs",
 )
 
 trainer = SFTTrainer(
     model=model,
-    train_dataset=dataset,
-    args=sft_config,
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["eval"],
     peft_config=lora_config,
+    args=training_args,
     processing_class=tokenizer,
 )
 
+print("开始微调...")
 trainer.train()
 trainer.save_model(output_dir)
+print(f"微调完成，适配器已保存至: {output_dir}")
