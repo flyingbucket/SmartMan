@@ -5,27 +5,29 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
 )
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig
 from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
 from datetime import datetime
 
-model_id = "./base_models/Qwen2.5-Coder-1.5B"
+model_id = "./base_models/Qwen2.5-1.5B-Instruct"
 data_path = "data/processed/nl2bash"
 
 timestemp = datetime.now().strftime("%m%d_%H%M")
-run_name = "qwen"
+run_name = "qwenInsctruct"
 output_dir = f"output/{run_name}{timestemp}"
 
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-# Qwen2.5 set eos as pad token
+tokenizer.eos_token = "<|im_end|>"
 tokenizer.pad_token = tokenizer.eos_token
+
 
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     torch_dtype=torch.bfloat16,  # use bf16
     device_map="auto",
+    attn_implementation="flash_attention_2",
 )
 
 lora_config = LoraConfig(
@@ -56,10 +58,10 @@ dataset = load_dataset(
 
 training_args = SFTConfig(
     output_dir=output_dir,
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=4,
+    per_device_train_batch_size=16,
+    gradient_accumulation_steps=1,
     learning_rate=2e-4,
-    num_train_epochs=3,
+    num_train_epochs=5,
     lr_scheduler_type="cosine",
     logging_steps=10,
     eval_strategy="steps",
@@ -70,6 +72,7 @@ training_args = SFTConfig(
     push_to_hub=False,
     dataset_text_field="messages",
     max_length=512,
+    packing=True,
     # tensorboard
     report_to="tensorboard",
     logging_dir=f"{output_dir}/runs",
