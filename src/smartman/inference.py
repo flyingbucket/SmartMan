@@ -1,5 +1,12 @@
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
 from peft import PeftModel
 
 # --- 配置区 ---
@@ -10,6 +17,7 @@ adapter_dir = "./output/qwen-0428-0034"
 
 print(f"正在加载基础模型: {model_dir}")
 tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+tokenizer.padding_side = "left"
 
 # 1. 显式定义量化配置 (必须这样写才能开启 4-bit)
 bnb_config = BitsAndBytesConfig(
@@ -28,21 +36,19 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 
 # 3. 挂载 LoRA 适配器
-print(f"正在挂载 LoRA 权重: {adapter_dir}")
-model = PeftModel.from_pretrained(model, adapter_dir)
+# print(f"正在挂载 LoRA 权重: {adapter_dir}")
+# model = PeftModel.from_pretrained(model, adapter_dir)
 model.eval()
 
+
 # ... 后面的对话循环逻辑保持不变 ...
-while True:
-    user_input = input("User ❯ ")
-    if user_input.lower() in ["exit", "quit", "q"]:
-        break
+def generate_bash(user_input, max_new_tokens=20):
 
     # 构造标准 Qwen 对话格式
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful assistant that provides precise Bash commands.",
+            "content": "You are a helpful assistant that provides precise Linux Bash commands.",
         },
         {"role": "user", "content": user_input},
     ]
@@ -53,17 +59,16 @@ while True:
     )
 
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-
+    im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
     # 生成答案
     with torch.no_grad():
-        generated_ids = model.generate(
+        generated_ids = model.generate(  # type: ignore
             **model_inputs,
-            max_new_tokens=512,
+            max_new_tokens=max_new_tokens,
             do_sample=True,
             temperature=0.1,
-            # top_p=0.9,
             pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.eos_token_id,  # 结束符
+            eos_token_id=[tokenizer.eos_token_id, im_end_id],
         )
 
     # 只截取模型新生成的回答部分
@@ -72,6 +77,20 @@ while True:
         for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
     ]
 
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=False)[0]
+    return response
 
-    print(f"\nAssistant ❯ \033[32m{response}\033[0m\n")
+
+test_cases = [
+    "列出当前目录下所有的.py文件",
+    "查看系统内存使用情况",
+    "把file.txt的内容按行倒序输出",
+    "递归删除当前目录下所有__pycache__文件夹",
+    "统计当前目录下有多少个.sh文件",
+]
+
+
+for i, case in enumerate(test_cases, 1):
+    result = generate_bash(case)
+    print(f"\n[{i}] 输入: {case}")
+    print(f"    输出: {result}")
