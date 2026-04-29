@@ -1,0 +1,3 @@
+*.nl linguist-language=Text
+*.nl linguist-vendored
+*.txt linguist-documentation
