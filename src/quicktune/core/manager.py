@@ -11,9 +11,9 @@ SFTBuilder: TypeAlias = Callable[..., SFTConfig]
 
 class TuneRegistry:
     def __init__(self) -> None:
-        self.model_zoo: Dict[str, Callable] = {}
-        self.lora_zoo: Dict[str, Callable] = {}
-        self.sft_zoo: Dict[str, Callable] = {}
+        self.model_zoo: Dict[str, ModelBuilder] = {}
+        self.lora_zoo: Dict[str, LoraBuilder] = {}
+        self.sft_zoo: Dict[str, SFTBuilder] = {}
 
     def register_model(self, name: str):
         def wrapper(builder: ModelBuilder) -> ModelBuilder:
