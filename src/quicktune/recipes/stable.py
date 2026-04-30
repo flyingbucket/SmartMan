@@ -51,7 +51,7 @@ def buildsft_bf16(
         output_dir=output_dir,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        learning_rate=lr,
+        learning_rate=float(lr),
         num_train_epochs=n_epochs,
         max_length=max_length,
         packing=packing,

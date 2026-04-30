@@ -1,0 +1,22 @@
+run_name: "qwenInstruct_short"
+model_id: "./base_models/Qwen2.5-1.5B-Instruct"
+data_dirs: ["data/processed/nl2bash"]
+
+recipe:
+  model: "bf16"
+  lora: "stable-qwen-all-linear"
+  lora_args:
+    r: 16
+    lora_dropout: 0.05
+  sft: "stable-qwen-bf16"
+  sft_args:
+    lr: 2e-4
+    n_epochs: 5
+    max_length: 256
+    packing: true
+    per_device_train_batch_size: 16
+    gradient_accumulation_steps: 1
+
+eval_conf:
+  model: ["bf16"]
+  lora_dir: []
