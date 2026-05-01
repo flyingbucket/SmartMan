@@ -10,12 +10,21 @@ from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
 from datetime import datetime
 
-model_id = "./base_models/Qwen2.5-1.5B-Instruct"
-data_path = "data/processed/nl2bash"
-
 timestemp = datetime.now().strftime("%m%d_%H%M")
 run_name = "qwenInsctruct"
 output_dir = f"output/{run_name}{timestemp}"
+
+model_id = "./base_models/Qwen2.5-1.5B-Instruct"
+data_path = "data/processed/nl2bash"
+
+# data preparation
+dataset = load_dataset(
+    "json",
+    data_files={
+        "train": os.path.join(data_path, "train.jsonl"),
+        "eval": os.path.join(data_path, "eval.jsonl"),  # 用 eval 做验证
+    },
+)
 
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
@@ -26,6 +35,7 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
     attn_implementation="flash_attention_2",
 )
+
 
 lora_config = LoraConfig(
     r=16,
@@ -43,16 +53,6 @@ lora_config = LoraConfig(
     bias="none",
     task_type="CAUSAL_LM",
 )
-
-# data preparation
-dataset = load_dataset(
-    "json",
-    data_files={
-        "train": os.path.join(data_path, "train.jsonl"),
-        "eval": os.path.join(data_path, "eval.jsonl"),  # 用 eval 做验证
-    },
-)
-
 training_args = SFTConfig(
     output_dir=output_dir,
     per_device_train_batch_size=16,
