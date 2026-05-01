@@ -4,11 +4,11 @@ data_dirs: ["data/processed/nl2bash"]
 
 recipe:
   model: "bf16"
-  lora: "stable-qwen-all-linear"
+  lora: "qwen/all-linear"
   lora_args:
     r: 16
     lora_dropout: 0.05
-  sft: "stable-qwen-bf16"
+  sft: "bf16/stable"
   sft_args:
     lr: 2e-4
     n_epochs: 5
@@ -18,5 +18,10 @@ recipe:
     gradient_accumulation_steps: 1
 
 eval_conf:
-  model: ["bf16"]
-  lora_dir: []
+  model: ["bf16", "bnb/4bit"]
+  lora_dir:
+    - "./output/qwenInstruct0429_1852"
+    - "./output/qwenInstruct_short0501_0107"
+
+  max_new_tokens: 128
+  batch_size: 256
