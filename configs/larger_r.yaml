@@ -1,4 +1,4 @@
-run_name: "qwenInstruct_short"
+run_name: "qwenInstruct_larger_r"
 model_id: "./base_models/Qwen2.5-1.5B-Instruct"
 data_dirs: ["data/processed/nl2bash"]
 
@@ -6,16 +6,24 @@ recipe:
   model: "bnb/4bit"
   lora: "qwen/all_linear"
   lora_args:
-    r: 16
+    r: 32
     lora_dropout: 0.05
-  sft: "bf16/stable"
+  sft: "bf16/flexible"
   sft_args:
-    lr: 2e-4
-    n_epochs: 5
-    max_length: 256
-    packing: true
+    learning_rate: 1e-4
+    num_train_epochs: 3
     per_device_train_batch_size: 16
     gradient_accumulation_steps: 1
+    packing: true
+    max_length: 256
+    eval_strategy: "steps"
+    eval_steps: 50
+    save_strategy: "steps"
+    save_steps: 50
+    load_best_model_at_end: true
+    metric_for_best_model: "eval_loss"
+    warmup_ratio: 0.1
+    weight_decay: 0.01
 
 eval_conf:
   model: ["bf16", "bnb/4bit"]
@@ -23,6 +31,7 @@ eval_conf:
     - "./output/qwenInstruct0429_1852"
     - "./output/qwenInstruct_short0501_0107"
     - "./output/qwenInstruct_short0501_2322"
+    - "./output/qwen0429_1607"
 
   max_new_tokens: 128
   batch_size: 256
