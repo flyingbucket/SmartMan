@@ -1,11 +1,12 @@
 use arboard::Clipboard;
 use clap::Parser;
 use colored::*;
+use directories::ProjectDirs;
 use inquire::Text;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::process::{Command, Stdio};
+use std::{fs, path::PathBuf, process::Command, process::Stdio};
 use ureq::Body;
 use ureq::http::Response;
 
@@ -117,4 +118,93 @@ fn execute_command(cmd: &str) {
         }
         Err(e) => eprintln!("Failed!: {}", e),
     }
+}
+
+const DEFAULT_CONFIG_YAML: &str = r#"
+llamafile_path: "/home/flyingbucket/CODE/SmartMan/deps/llamafile"
+server:
+  host: "127.0.0.1"
+  port: 8080
+
+models:
+  - name: "smartman-v1-f16"
+    path: "/home/flyingbucket/CODE/SmartMan/dist/gguf/smartman-v1-f16.gguf"
+  - name: "smartman-v1-q4_k_m"
+    path: "/home/flyingbucket/CODE/SmartMan/dist/gguf/smartman-v1-q4_k_m.gguf"
+"#;
+
+#[derive(Debug, Deserialize)]
+pub struct AppConfig {
+    pub llamafile_path: String,
+    pub server: ServerConfig,
+    pub models: Vec<ModelConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ServerConfig {
+    pub host: String,
+    pub port: u16,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ModelConfig {
+    pub name: String,
+    pub path: String,
+}
+
+pub fn load_config() -> AppConfig {
+    let config_path = config_path();
+    let content = config_path
+        .as_ref()
+        .and_then(|p| fs::read_to_string(p).ok())
+        .unwrap_or_else(|| DEFAULT_CONFIG_YAML.to_string());
+
+    serde_yaml::from_str(&content).expect("Invalid config yaml")
+}
+
+fn config_path() -> Option<PathBuf> {
+    ProjectDirs::from("com", "smartman", "smartman-cli")
+        .map(|dirs| dirs.config_dir().join("config.yaml"))
+}
+
+pub fn select_model(config: &AppConfig) -> ModelConfig {
+    let options: Vec<String> = config.models.iter().map(|m| m.name.clone()).collect();
+    let ans = inquire::Select::new("Choose model:", options).prompt();
+
+    match ans {
+        Ok(name) => config
+            .models
+            .iter()
+            .find(|m| m.name == name)
+            .unwrap()
+            .clone(),
+        Err(_) => config.models[0].clone(),
+    }
+}
+
+pub fn start_llamafile(config: &AppConfig, model: &ModelConfig) -> std::process::Child {
+    let llama = expand_path(&config.llamafile_path);
+    let model_path = expand_path(&model.path);
+
+    println!("llamafile_path = {:?}", llama);
+    println!("model_path = {:?}", model_path);
+    println!("exists = {}", std::fs::metadata(&llama).is_ok());
+    println!("canonical = {:?}", std::fs::canonicalize(&llama).ok());
+    Command::new("sh")
+        .arg(&llama)
+        .arg("-m")
+        .arg(model_path)
+        .arg("--server")
+        .arg("--host")
+        .arg(&config.server.host)
+        .arg("--port")
+        .arg(config.server.port.to_string())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Failed to start llamafile")
+}
+
+fn expand_path(path: &str) -> String {
+    shellexpand::tilde(path).to_string()
 }
