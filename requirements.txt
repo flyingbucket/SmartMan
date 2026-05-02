@@ -32,6 +32,7 @@ tensorboard==2.20.0
 rouge_score==0.1.2
 
 # Utilities
+bashlex==0.18
 tqdm==4.67.3
 einops==0.8.2
 tyro==1.0.13
