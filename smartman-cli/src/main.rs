@@ -10,7 +10,7 @@ fn main() {
 
     let config = load_config();
     let model = select_model(&config);
-    let _child = start_llamafile(&config, &model);
+    let _child = start_llamafile(&config, &model).wait();
 
     let api_url = format!(
         "http://{}:{}/v1/chat/completions",
