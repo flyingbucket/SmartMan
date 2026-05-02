@@ -5,8 +5,6 @@ __pycache__/
 notebooks/
 base_models/
 env_bundle/
+dist/
 output/
 data/processed/
-Qwen2.5-Coder-1.5B/
-
-Qwen2.5-Coder-1.5B.tar
