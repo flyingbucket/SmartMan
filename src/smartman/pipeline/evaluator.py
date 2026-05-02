@@ -269,7 +269,6 @@ def evaluate(model_id: str, eval_conf, data_dict, data_dirs):
     eval_res_dir.mkdir(exist_ok=True)
 
     hist_df = _load_history(eval_res_dir)
-    print(hist_df)
     done_keys = set()
     if not hist_df.empty:
         for _, r in hist_df.iterrows():
