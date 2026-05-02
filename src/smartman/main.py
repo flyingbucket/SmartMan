@@ -31,11 +31,13 @@ def main():
         train(model_id, run_name, recipe, data_dict)
     elif args.mode == "eval":
         assert eval_conf is not None
+        # evaluate_parallel(model_id, eval_conf, data_dict, data_dirs, eval_gpu_ids)
         evaluate(model_id, eval_conf, data_dict, data_dirs)
     elif args.mode == "all":
         output_dir = train(model_id, run_name, recipe, data_dict)
         assert eval_conf is not None
         eval_conf["lora_dir"].append(output_dir)
+        # evaluate_parallel(model_id, eval_conf, data_dict, data_dirs, eval_gpu_ids)
         evaluate(model_id, eval_conf, data_dict, data_dirs)
 
 
