@@ -1,0 +1,3 @@
+﻿timestamp,base_model,data_dirs,quant_config,lora_name,lora_path,max_new_tokens,batch_size,S-EM,BLEU,Syntax_Pass,Soft-EM_F1,Edit_Sim,Len_Ratio
+2026-05-02 15:20:32,./base_models/Qwen2.5-1.5B-Instruct,"[""data/processed/nl2bash""]",bf16,qwenInstruct_short_larger_r0502_1501,output/qwenInstruct_short_larger_r0502_1501,128,256,12.212529738302933,26.571722456516124,99.12767644726408,58.99968328417183,70.94083507791872,111.8779391157071
+2026-05-02 15:21:35,./base_models/Qwen2.5-1.5B-Instruct,"[""data/processed/nl2bash""]",bnb/4bit,qwenInstruct_short_larger_r0502_1501,output/qwenInstruct_short_larger_r0502_1501,128,256,14.274385408406026,29.31111898336431,98.96907216494846,60.4472999658917,71.6548581193858,109.68068093499627
