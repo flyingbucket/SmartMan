@@ -3,8 +3,12 @@ __pycache__/
 .ipynb_checkpoints/
 
 notebooks/
-base_models/
+
 env_bundle/
+
+base_models/
+deps/
 dist/
 output/
 data/processed/
+target/
