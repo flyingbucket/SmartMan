@@ -146,21 +146,27 @@ fn copy_to_clipboard(text: &str, clipboard: Option<&mut arboard::Clipboard>) {
     }
 }
 
-fn execute_command(cmd: &str) {
+pub fn execute_command(cmd: &str) {
     println!("{}", "Executing...".dimmed());
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(["/C", cmd]).output()
-    } else {
-        Command::new("bash").arg("-c").arg(cmd).output()
-    };
 
-    match output {
-        Ok(out) => {
-            println!("{}", String::from_utf8_lossy(&out.stdout));
-            if !out.stderr.is_empty() {
-                eprintln!("{}", String::from_utf8_lossy(&out.stderr).red());
-            }
-        }
-        Err(e) => eprintln!("Failed!: {}", e),
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd").args(["/C", cmd]).spawn()
+    } else {
+        Command::new("bash")
+            .arg("-ci")
+            .arg(cmd)
+            // 明确继承环境变量和路径（其实不写这两行也是默认继承的）
+            .envs(std::env::vars())
+            // 核心：把输出直接甩给当前的终端
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+    }
+    .and_then(|mut child| child.wait()); // 等待命令跑完
+
+    match status {
+        Ok(s) if s.success() => (), // 正常结束
+        Ok(s) => eprintln!("{}", format!("Command exited with status: {}", s).yellow()),
+        Err(e) => eprintln!("Failed to execute: {}", e),
     }
 }
