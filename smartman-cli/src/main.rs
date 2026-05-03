@@ -1,16 +1,35 @@
 use arboard::Clipboard;
+use clap::Parser;
 use colored::*;
 use inquire::Text;
 use regex::Regex;
-use smartman_cli::*;
+use smartman_cli::client::*;
+use smartman_cli::config::*;
+use smartman_cli::engine::*;
 
 fn main() {
+    let args = Args::parse();
+    if let Some(cmd) = args.command {
+        match cmd {
+            Commands::Install {
+                target_type,
+                source,
+                link,
+            } => {
+                if let Err(e) = handle_install(&target_type, &source, link) {
+                    eprintln!("Installation failed: {}", e);
+                    std::process::exit(1);
+                }
+                return; // 执行完安装即退出
+            }
+        }
+    }
     let re = Regex::new(r"```(?:bash)?\n?([\s\S]*?)```").unwrap();
     let mut clipboard = Clipboard::new().ok();
 
     let config = load_config();
     let model = select_model(&config);
-    let _child = start_llamafile(&config, &model).wait();
+    let mut child = start_llamafile(&config, &model);
 
     let api_url = format!(
         "http://{}:{}/v1/chat/completions",
@@ -63,4 +82,8 @@ fn main() {
             }
         }
     }
+    println!("{}", "Shutting down engine...".dimmed());
+    let _ = child.kill();
+    let _ = child.wait();
+    println!("Goodbye!");
 }
