@@ -1,11 +1,12 @@
 use arboard::Clipboard;
 use clap::Parser;
 use colored::*;
-use inquire::Text;
+use inquire::{Select, Text};
 use regex::Regex;
 use smartman_cli::client::*;
 use smartman_cli::config::*;
 use smartman_cli::engine::*;
+use std::fs;
 
 fn main() {
     let args = Args::parse();
@@ -29,7 +30,7 @@ fn main() {
 
     let config = load_config();
     let model = select_model(&config);
-    let mut child = start_llamafile(&config, &model);
+    let engine_handle = start_llamafile(&config, &model);
 
     let api_url = format!(
         "http://{}:{}/v1/chat/completions",
@@ -96,8 +97,47 @@ fn main() {
             }
         }
     }
-    println!("{}", "Shutting down engine...".dimmed());
-    let _ = child.kill();
-    let _ = child.wait();
+    // REPL 结束后处理 engine
+    let health_url = format!(
+        "http://{}:{}/health",
+        config.server.host, config.server.port
+    );
+    let is_alive = ureq::get(&health_url).call().is_ok();
+
+    if is_alive {
+        match engine_handle {
+            EngineHandle::Existing { pid } => {
+                let options = vec!["Shutdown Existing Engine", "Disconnect (Keep Alive)"];
+                let choice = Select::new("Backend engine is active. How to exit?", options)
+                    .prompt()
+                    .unwrap_or("Disconnect (Keep Alive)");
+
+                if choice.contains("Shutdown") {
+                    stop_engine_by_pid(pid);
+                    println!("{}", "Engine stopped.".green());
+                } else {
+                    println!("{}", "Engine detached. You can reconnect later.".blue());
+                }
+            }
+            EngineHandle::Owned {
+                pid: _pid,
+                mut child,
+            } => {
+                let options = vec!["Shutdown Engine (Exit)", "Keep Running (Detach)"];
+                let choice = Select::new("Backend engine is active. How to exit?", options)
+                    .prompt()
+                    .unwrap_or("Keep Running (Detach)");
+
+                if choice.contains("Shutdown") {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    let _ = fs::remove_file(get_pid_file());
+                    println!("{}", "Engine stopped.".green());
+                } else {
+                    println!("{}", "Engine detached. You can reconnect later.".blue());
+                }
+            }
+        }
+    }
     println!("Goodbye!");
 }
