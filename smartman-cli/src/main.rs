@@ -48,10 +48,24 @@ fn main() {
             Err(_) => break,
         };
 
-        if prompt == "exit" || prompt == "quit" {
+        let trimmed_prompt = prompt.trim();
+        if trimmed_prompt == "exit" || trimmed_prompt == "quit" {
             break;
         }
-        if prompt.trim().is_empty() {
+        if trimmed_prompt.is_empty() {
+            continue;
+        }
+
+        if let Some(direct_cmd) = trimmed_prompt.strip_prefix("!") {
+            let direct_cmd = direct_cmd.trim();
+            if !direct_cmd.is_empty() {
+                println!(
+                    "{} {}",
+                    " SH ".on_magenta().black().bold(),
+                    direct_cmd.magenta().italic()
+                );
+                execute_command(direct_cmd);
+            }
             continue;
         }
 
