@@ -12,3 +12,5 @@ dist/
 output/
 data/processed/
 target/
+assets/
+models/
