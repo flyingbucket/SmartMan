@@ -1,9 +1,11 @@
 use directories::ProjectDirs;
 use serde::Deserialize;
 use std::io;
-use std::os::unix::fs::symlink; // 仅限 Unix 系统
-use std::{env, fs, path::PathBuf};
-
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
+#[cfg(windows)]
+use std::os::windows::fs::symlink_file as symlink;
+use std::{env, fs, path::PathBuf}; // Windows 下区分文件和目录链接
 const DEFAULT_CONFIG_YAML: &str = r#"
 llamafile_path: "./assets/llamafile"
 server:
@@ -147,6 +149,17 @@ pub fn handle_install(target_type: &str, source: &str, use_link: bool) -> io::Re
             let abs_source = fs::canonicalize(&source_path)?;
             symlink(&abs_source, &dest_path)?;
             println!("Created symlink: {:?} -> {:?}", abs_source, dest_path);
+        }
+        #[cfg(windows)]
+        {
+            if dest_path.exists() {
+                fs::remove_file(&dest_path)?;
+            }
+            fs::copy(&source_path, &dest_path)?;
+            println!(
+                "Windows detected: Copied file instead of symlink: {:?}",
+                dest_path
+            );
         }
     } else {
         println!("Copying file (this may take a while)...");
