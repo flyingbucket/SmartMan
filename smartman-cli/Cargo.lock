@@ -1203,6 +1203,7 @@ dependencies = [
  "clap",
  "colored",
  "directories",
+ "dirs",
  "inquire",
  "regex",
  "serde",
