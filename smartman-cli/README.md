@@ -1,1 +1,1 @@
-# SmartMan
+../README.md
