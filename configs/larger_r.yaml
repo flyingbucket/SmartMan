@@ -28,6 +28,7 @@ recipe:
 eval_conf:
   model: ["bf16", "bnb/4bit"]
   lora_dir:
+    - "None"
     - "./output/qwenInstruct0429_1852"
     - "./output/qwenInstruct_short0501_0107"
     - "./output/qwenInstruct_short0501_2322"

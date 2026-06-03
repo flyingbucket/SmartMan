@@ -299,7 +299,13 @@ def evaluate(model_id: str, eval_conf, data_dict, data_dirs):
             model_builder = registry.model_zoo[causal_conf_name]
             model = model_builder(model_id)
             tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-            model = PeftModel.from_pretrained(model, lora_path)
+            if lora_path is not None and str(lora_path).lower() != "none":
+                model = PeftModel.from_pretrained(model, lora_path)
+                current_lora_name = str(lora_path).split("/")[-1]
+            else:
+                # Base Model 走这里
+                current_lora_name = "Base_Model"
+
             model.eval()
 
             def model_inference_wrapper(prompts):
@@ -322,8 +328,8 @@ def evaluate(model_id: str, eval_conf, data_dict, data_dirs):
                 "base_model": model_id,
                 "data_dirs": _stable_json(list(data_dirs)),
                 "quant_config": causal_conf_name,
-                "lora_name": lora_path.split("/")[-1],
-                "lora_path": lora_path,
+                "lora_name": current_lora_name,
+                "lora_path": str(lora_path),
                 "max_new_tokens": max_new_tokens,
                 "batch_size": batch_size,
                 **metrics,
